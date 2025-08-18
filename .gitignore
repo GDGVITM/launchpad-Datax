@@ -97,3 +97,83 @@ temp/
 # TypeScript
 *.tsbuildinfo
 .tscache/
+
+# Backend specific files and directories
+backend/uploads/
+backend/reports/
+backend/storage/
+backend/temp/
+backend/logs/
+backend/.env
+backend/.env.local
+backend/.env.production
+backend/.env.test
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Redis dump file
+dump.rdb
+
+# Blockchain related
+backend/contracts/artifacts/
+backend/contracts/cache/
+backend/typechain/
+cache/
+artifacts/
+typechain/
+typechain-types/
+
+# Hardhat & Foundry
+out/
+cache_forge/
+
+# Security - Never commit these!
+*.key
+*.pem
+*.p12
+*.pfx
+.secret
+.infuraKey
+.privateKey
+.mnemonic
+secrets.json
+config/production.json
+config/staging.json
+
+# Application uploads and storage
+uploads/
+downloads/
+reports/
+storage/
+
+# Testing
+coverage/
+.nyc_output/
+test-results/
+junit.xml
+
+# Package managers lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Backup files
+*.bak
+*.backup
+
+# Local development
+.history/
+.vscode/settings.json
+
+# Vercel & Netlify
+.vercel/
+.netlify/
+
+# Rush
+common/deploy/
+common/temp/
+common/autoinstallers/*/.npmrc
+**/.rush/temp/
