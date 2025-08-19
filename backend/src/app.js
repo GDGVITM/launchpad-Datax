@@ -10,7 +10,7 @@ const socketIo = require('socket.io');
 
 // Import configuration and middleware
 const config = require('./config');
-const connectDB = require('./config/database');
+const database = require('./config/database');
 const { errorHandler, notFound } = require('./middleware/errorHandling');
 const { authenticateSocketToken } = require('./middleware/auth');
 
@@ -30,7 +30,7 @@ const io = socketIo(server, {
 });
 
 // Connect to MongoDB
-connectDB();
+database.connect();
 
 // Trust proxy for accurate IP addresses
 app.set('trust proxy', 1);

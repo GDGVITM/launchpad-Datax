@@ -11,6 +11,33 @@ interface ApiResponse<T = any> {
   timestamp: string;
 }
 
+// Statistics API response types
+interface LogStats {
+  total: number;
+  trend: number;
+  recent: number;
+}
+
+interface ThreatStats {
+  total: number;
+  active: number;
+  trend: number;
+  critical: number;
+}
+
+interface AlertStats {
+  total: number;
+  critical: number;
+  trend: number;
+  resolved: number;
+}
+
+interface DashboardStatsResponse {
+  logs: LogStats;
+  threats: ThreatStats;
+  alerts: AlertStats;
+}
+
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;

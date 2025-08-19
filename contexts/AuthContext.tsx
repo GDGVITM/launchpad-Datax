@@ -2,8 +2,8 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { apiClient } from '@/lib/api';
-import { socketManager } from '@/lib/socket';
+import { apiClient } from '../lib/api';
+import { socketManager } from '../lib/socket';
 
 interface User {
   id: string;
@@ -36,6 +36,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+export { AuthContext };
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiClient.getProfile();
       
       if (response.success && response.data) {
-        setUser(response.data);
+        setUser(response.data as User);
         
         // Connect to Socket.IO for real-time features
         socketManager.connect(token);
@@ -125,10 +127,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiClient.register(userData);
       
       if (response.success && response.data) {
-        setUser(response.data.user);
+        setUser((response.data as any).user);
         
         // Connect to Socket.IO
-        socketManager.connect(response.data.tokens.accessToken);
+        socketManager.connect((response.data as any).tokens.accessToken);
         socketManager.subscribeToAlerts();
         socketManager.subscribeToThreats();
         socketManager.subscribeToLogs();
@@ -148,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiClient.updateProfile(profileData);
       
       if (response.success && response.data) {
-        setUser(response.data);
+        setUser(response.data as User);
       } else {
         throw new Error(response.message || 'Profile update failed');
       }

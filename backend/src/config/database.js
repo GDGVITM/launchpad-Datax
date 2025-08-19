@@ -8,6 +8,7 @@ const config = require('./index');
 class DatabaseConnection {
   constructor() {
     this.connection = null;
+    this.mockMode = false;
   }
 
   /**
@@ -16,14 +17,21 @@ class DatabaseConnection {
    */
   async connect() {
     try {
+      // Check if using mock database
+      if (config.MONGODB_URI.startsWith('mock://') || process.env.USE_MOCK_DB === 'true') {
+        console.log('🎭 Using mock database for development...');
+        this.mockMode = true;
+        return this.setupMockConnection();
+      }
+
       const mongooseOptions = {
         useNewUrlParser: true,
         useUnifiedTopology: true,
         maxPoolSize: 10, // Maintain up to 10 socket connections
-        serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+        serverSelectionTimeoutMS: 10000, // Keep trying to send operations for 10 seconds
         socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-        bufferMaxEntries: 0, // Disable mongoose buffering
-        bufferCommands: false, // Disable mongoose buffering
+        connectTimeoutMS: 10000, // Give up initial connection after 10 seconds
+        // Removed deprecated options: bufferMaxEntries and bufferCommands
       };
 
       // Use test database if in test environment
@@ -49,8 +57,24 @@ class DatabaseConnection {
       return this.connection;
     } catch (error) {
       console.error('❌ MongoDB connection failed:', error.message);
-      process.exit(1);
+      console.warn('⚠️ Continuing without database connection for development...');
+      // Don't exit the process, allow the app to continue running
+      // process.exit(1);
+      return null;
     }
+  }
+
+  /**
+   * Setup mock database connection for development
+   * @returns {Object} Mock connection object
+   */
+  setupMockConnection() {
+    console.log('✅ Mock database connected successfully');
+    this.connection = {
+      readyState: 1, // Connected state
+      name: 'cybersecurity_saas_mock'
+    };
+    return this.connection;
   }
 
   /**

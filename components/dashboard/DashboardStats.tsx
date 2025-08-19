@@ -9,7 +9,7 @@ import {
   DocumentTextIcon,
   BellIcon
 } from '@heroicons/react/24/outline';
-import { MetricCard } from '@/components/ui/MetricCard';
+import { MetricCard } from '../../src/components/ui/MetricCard';
 import { apiClient } from '../../lib/api';
 
 interface DashboardStatsData {
@@ -54,14 +54,14 @@ export default function DashboardStats() {
 
       if (logsResponse.success && threatsResponse.success && alertsResponse.success) {
         setStats({
-          totalLogs: logsResponse.data?.total || 0,
-          totalThreats: threatsResponse.data?.total || 0,
-          totalAlerts: alertsResponse.data?.total || 0,
-          activeThreats: threatsResponse.data?.active || 0,
-          criticalAlerts: alertsResponse.data?.critical || 0,
-          logsTrend: logsResponse.data?.trend || 0,
-          threatsTrend: threatsResponse.data?.trend || 0,
-          alertsTrend: alertsResponse.data?.trend || 0,
+          totalLogs: (logsResponse.data as any)?.total || 0,
+          totalThreats: (threatsResponse.data as any)?.total || 0,
+          totalAlerts: (alertsResponse.data as any)?.total || 0,
+          activeThreats: (threatsResponse.data as any)?.active || 0,
+          criticalAlerts: (alertsResponse.data as any)?.critical || 0,
+          logsTrend: (logsResponse.data as any)?.trend || 0,
+          threatsTrend: (threatsResponse.data as any)?.trend || 0,
+          alertsTrend: (alertsResponse.data as any)?.trend || 0,
         });
       }
     } catch (err) {
@@ -126,9 +126,9 @@ export default function DashboardStats() {
         <MetricCard
           title="Total Security Logs"
           value={stats.totalLogs.toLocaleString()}
-          trend={stats.logsTrend}
-          icon={DocumentTextIcon}
-          color="blue"
+          trend={{ value: Math.abs(stats.logsTrend), isPositive: stats.logsTrend >= 0 }}
+          icon={<DocumentTextIcon className="w-6 h-6" />}
+          color="primary"
         />
       </motion.div>
 
@@ -136,9 +136,9 @@ export default function DashboardStats() {
         <MetricCard
           title="Active Threats"
           value={stats.activeThreats.toLocaleString()}
-          trend={stats.threatsTrend}
-          icon={ExclamationTriangleIcon}
-          color="red"
+          trend={{ value: Math.abs(stats.threatsTrend), isPositive: stats.threatsTrend >= 0 }}
+          icon={<ExclamationTriangleIcon className="w-6 h-6" />}
+          color="danger"
         />
       </motion.div>
 
@@ -146,9 +146,9 @@ export default function DashboardStats() {
         <MetricCard
           title="Critical Alerts"
           value={stats.criticalAlerts.toLocaleString()}
-          trend={stats.alertsTrend}
-          icon={BellIcon}
-          color="yellow"
+          trend={{ value: Math.abs(stats.alertsTrend), isPositive: stats.alertsTrend >= 0 }}
+          icon={<BellIcon className="w-6 h-6" />}
+          color="warning"
         />
       </motion.div>
 
@@ -156,9 +156,9 @@ export default function DashboardStats() {
         <MetricCard
           title="Total Threats"
           value={stats.totalThreats.toLocaleString()}
-          trend={stats.threatsTrend}
-          icon={ShieldCheckIcon}
-          color="green"
+          trend={{ value: Math.abs(stats.threatsTrend), isPositive: stats.threatsTrend >= 0 }}
+          icon={<ShieldCheckIcon className="w-6 h-6" />}
+          color="success"
         />
       </motion.div>
     </motion.div>

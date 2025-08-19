@@ -9,6 +9,7 @@ import {
   ClockIcon
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../lib/api';
+import { socketManager } from '../../lib/socket';
 
 interface SystemStatus {
   api: boolean;
@@ -48,7 +49,7 @@ export default function SystemStatus() {
         setStatus(prev => ({
           ...prev,
           database: true,
-          blockchain: statusResponse.data.blockchain?.enabled || false,
+          blockchain: (statusResponse.data as any)?.blockchain?.enabled || false,
         }));
       }
 
