@@ -19,59 +19,83 @@ class AuthController extends BaseController {
    */
   async register(req, res) {
     try {
-      const { error } = this.validateRegistration(req.body);
-      if (error) {
-        return this.sendValidationError(res, error.details);
+      const { email, password, name, role = 'Analyst' } = req.body;
+
+      // Basic validation
+      if (!email || !password || !name) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email, password, and name are required',
+          timestamp: new Date().toISOString()
+        });
       }
 
-      const { email, password, name, organizationId, role = 'user' } = req.body;
-
       // Check if user already exists
-      const existingUser = await User.findOne({ email });
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
       if (existingUser) {
-        return this.sendError(res, 'User already exists with this email', 400);
+        return res.status(400).json({
+          success: false,
+          message: 'User already exists with this email',
+          timestamp: new Date().toISOString()
+        });
       }
 
       // Create user
       const userData = {
-        email,
-        password,
-        name,
-        organizationId,
+        email: email.toLowerCase(),
+        passwordHash: password, // Will be hashed by pre-save middleware
         role,
-        isActive: true
+        status: 'Active',
+        profile: {
+          firstName: name.split(' ')[0],
+          lastName: name.split(' ').slice(1).join(' ') || ''
+        }
       };
 
-      const user = await userService.createUser(userData);
+      const user = await User.create(userData);
 
-      // Register user on blockchain if enabled
-      if (process.env.BLOCKCHAIN_ENABLED === 'true') {
-        try {
-          await blockchainService.registerUser(user._id.toString(), organizationId);
-          await User.findByIdAndUpdate(user._id, { 
-            isBlockchainRegistered: true 
-          });
-        } catch (blockchainError) {
-          console.error('Blockchain registration failed:', blockchainError);
-          // Continue with registration but log the blockchain failure
-        }
-      }
+      // Generate simple JWT token
+      const jwt = require('jsonwebtoken');
+      const accessToken = jwt.sign(
+        { 
+          id: user._id, 
+          email: user.email, 
+          role: user.role 
+        },
+        process.env.JWT_SECRET || 'fallback-secret',
+        { expiresIn: '24h' }
+      );
 
-      // Generate tokens
-      const tokens = authService.generateTokens(user);
+      const refreshToken = jwt.sign(
+        { id: user._id },
+        process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret',
+        { expiresIn: '7d' }
+      );
 
       // Remove password from response
       const userResponse = user.toObject();
-      delete userResponse.password;
+      delete userResponse.passwordHash;
 
-      return this.sendSuccess(res, {
-        user: userResponse,
-        tokens
-      }, 'User registered successfully', 201);
+      return res.status(201).json({
+        success: true,
+        message: 'User registered successfully',
+        data: {
+          user: userResponse,
+          tokens: {
+            accessToken,
+            refreshToken
+          }
+        },
+        timestamp: new Date().toISOString()
+      });
 
     } catch (error) {
       console.error('Registration error:', error);
-      return this.sendError(res, 'Registration failed');
+      return res.status(500).json({
+        success: false,
+        message: 'Registration failed',
+        timestamp: new Date().toISOString()
+      });
     }
   }
 
@@ -80,54 +104,94 @@ class AuthController extends BaseController {
    */
   async login(req, res) {
     try {
-      const { error } = this.validateLogin(req.body);
-      if (error) {
-        return this.sendValidationError(res, error.details);
-      }
-
       const { email, password, walletAddress, signature } = req.body;
 
-      let user;
-
-      if (email && password) {
-        // Traditional email/password login
-        user = await authService.authenticateUser(email, password);
-      } else if (walletAddress && signature) {
-        // Blockchain wallet login
-        user = await authService.authenticateWallet(walletAddress, signature);
-      } else {
-        return this.sendError(res, 'Invalid login credentials provided', 400);
+      // Basic validation
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email and password are required',
+          timestamp: new Date().toISOString()
+        });
       }
 
+      // Find user by email
+      const user = await User.findOne({ email: email.toLowerCase() });
+      
       if (!user) {
-        return this.sendError(res, 'Invalid credentials', 401);
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid credentials',
+          timestamp: new Date().toISOString()
+        });
       }
 
-      if (!user.isActive) {
-        return this.sendError(res, 'Account is deactivated', 401);
+      // Check password
+      const isPasswordValid = await user.comparePassword(password);
+      
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid credentials',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      if (user.status !== 'Active') {
+        return res.status(401).json({
+          success: false,
+          message: 'Account is deactivated',
+          timestamp: new Date().toISOString()
+        });
       }
 
       // Update last login
       await User.findByIdAndUpdate(user._id, {
-        lastLogin: new Date(),
-        $inc: { loginCount: 1 }
+        lastLogin: new Date()
       });
 
-      // Generate tokens
-      const tokens = authService.generateTokens(user);
+      // Generate simple JWT token
+      const jwt = require('jsonwebtoken');
+      const accessToken = jwt.sign(
+        { 
+          id: user._id, 
+          email: user.email, 
+          role: user.role 
+        },
+        process.env.JWT_SECRET || 'fallback-secret',
+        { expiresIn: '24h' }
+      );
+
+      const refreshToken = jwt.sign(
+        { id: user._id },
+        process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret',
+        { expiresIn: '7d' }
+      );
 
       // Remove password from response
       const userResponse = user.toObject();
-      delete userResponse.password;
+      delete userResponse.passwordHash;
 
-      return this.sendSuccess(res, {
-        user: userResponse,
-        tokens
-      }, 'Login successful');
+      return res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        data: {
+          user: userResponse,
+          tokens: {
+            accessToken,
+            refreshToken
+          }
+        },
+        timestamp: new Date().toISOString()
+      });
 
     } catch (error) {
       console.error('Login error:', error);
-      return this.sendError(res, 'Login failed');
+      return res.status(500).json({
+        success: false,
+        message: 'Login failed',
+        timestamp: new Date().toISOString()
+      });
     }
   }
 

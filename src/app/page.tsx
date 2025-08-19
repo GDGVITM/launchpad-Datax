@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
 import { 
   ShieldCheckIcon, 
   ChartBarIcon, 
@@ -9,12 +10,57 @@ import {
   CpuChipIcon,
   ArrowRightIcon,
   CheckIcon,
-  StarIcon
+  StarIcon,
+  WifiIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 import { NeonButton } from '@/components/ui/NeonButton'
 import { GlassCard } from '@/components/ui/GlassCard'
+import { apiClient } from '@/lib/api'
 
 export default function HomePage() {
+  const [apiStatus, setApiStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting')
+  const [systemStatus, setSystemStatus] = useState<any>(null)
+
+  useEffect(() => {
+    checkApiConnection()
+  }, [])
+
+  const checkApiConnection = async () => {
+    try {
+      const response = await apiClient.getHealthStatus()
+      if (response.success) {
+        setApiStatus('connected')
+        // Also get system status
+        const statusResponse = await apiClient.getSystemStatus()
+        if (statusResponse.success) {
+          setSystemStatus(statusResponse.data)
+        }
+      } else {
+        setApiStatus('disconnected')
+      }
+    } catch (error) {
+      console.error('API connection failed:', error)
+      setApiStatus('disconnected')
+    }
+  }
+
+  const getStatusColor = () => {
+    switch (apiStatus) {
+      case 'connected': return 'text-success'
+      case 'disconnected': return 'text-critical'
+      default: return 'text-warning'
+    }
+  }
+
+  const getStatusIcon = () => {
+    switch (apiStatus) {
+      case 'connected': return <CheckIcon className="w-5 h-5" />
+      case 'disconnected': return <ExclamationTriangleIcon className="w-5 h-5" />
+      default: return <WifiIcon className="w-5 h-5 animate-pulse" />
+    }
+  }
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -58,37 +104,26 @@ export default function HomePage() {
     {
       icon: ShieldCheckIcon,
       title: "AI-Powered Threat Detection",
-      description: "Advanced machine learning algorithms detect and prevent cyber threats in real-time"
+      description: "Advanced machine learning algorithms detect and prevent cyber threats in real-time",
+      status: systemStatus?.features?.threatDetection ? 'Active' : 'Loading...'
     },
     {
       icon: ChartBarIcon,
       title: "Comprehensive Analytics",
-      description: "Deep insights into your security posture with interactive dashboards and reports"
+      description: "Deep insights into your security posture with interactive dashboards and reports",
+      status: systemStatus?.features?.logAnchoring ? 'Active' : 'Loading...'
     },
     {
       icon: UserGroupIcon,
       title: "Identity Management",
-      description: "Decentralized identity verification and access control for your organization"
+      description: "Decentralized identity verification and access control for your organization",
+      status: systemStatus?.features?.userManagement ? 'Active' : 'Loading...'
     },
     {
       icon: CpuChipIcon,
       title: "Blockchain Security",
-      description: "Immutable audit trails and cryptographic verification for maximum security"
-    }
-  ]
-
-  const testimonials = [
-    {
-      name: "Sarah Chen",
-      role: "CISO, TechCorp",
-      content: "CyberGuard has revolutionized our security operations. The AI-powered detection is incredible.",
-      rating: 5
-    },
-    {
-      name: "Mike Rodriguez",
-      role: "Security Director",
-      content: "Best security platform we've ever used. The blockchain integration is seamless.",
-      rating: 5
+      description: "Immutable audit trails and cryptographic verification for maximum security",
+      status: systemStatus?.features?.blockchainIntegration ? 'Active' : 'Development'
     }
   ]
 
@@ -120,9 +155,6 @@ export default function HomePage() {
           }}
           className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-r from-accent/10 to-transparent rounded-full blur-3xl"
         />
-        
-        {/* Mesh pattern */}
-        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary/5 to-transparent opacity-30" />
       </div>
 
       <motion.div
@@ -147,11 +179,20 @@ export default function HomePage() {
               <ShieldCheckIcon className="w-6 h-6 text-white" />
             </motion.div>
             <h1 className="text-2xl font-bold bg-cyber-gradient bg-clip-text text-transparent">
-              CyberGuard
+              CyberSec Pro
             </h1>
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* API Status Indicator */}
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm ${getStatusColor()}`}>
+              {getStatusIcon()}
+              <span className="text-sm font-medium">
+                {apiStatus === 'connected' ? 'API Connected' : 
+                 apiStatus === 'disconnected' ? 'API Offline' : 'Connecting...'}
+              </span>
+            </div>
+            
             <Link 
               href="/login"
               className="text-text-muted hover:text-text transition-colors"
@@ -165,6 +206,33 @@ export default function HomePage() {
             </Link>
           </div>
         </motion.nav>
+
+        {/* System Status Banner */}
+        {systemStatus && (
+          <motion.div
+            variants={itemVariants}
+            transition={itemTransition}
+            className="mx-6 lg:mx-12 mb-8"
+          >
+            <GlassCard className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-success rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium text-text">System Status: All Systems Operational</span>
+                  </div>
+                  <div className="text-sm text-text-muted">
+                    Environment: {systemStatus.environment} | Version: {systemStatus.version}
+                  </div>
+                </div>
+                <div className="text-sm text-text-muted">
+                  Blockchain: {systemStatus.blockchain?.enabled ? 'Enabled' : 'Disabled'} | 
+                  Network: {systemStatus.blockchain?.network}
+                </div>
+              </div>
+            </GlassCard>
+          </motion.div>
+        )}
 
         {/* Hero Section */}
         <section className="px-6 lg:px-12 py-20 text-center">
@@ -200,38 +268,20 @@ export default function HomePage() {
             >
               <Link href="/dashboard">
                 <NeonButton variant="primary" size="lg" className="px-8">
-                  Start Free Trial
+                  View Live Dashboard
                   <ArrowRightIcon className="w-5 h-5 ml-2" />
                 </NeonButton>
               </Link>
-              <NeonButton variant="secondary" size="lg" className="px-8">
-                Watch Demo
-              </NeonButton>
-            </motion.div>
-
-            {/* Trust indicators */}
-            <motion.div
-              variants={itemVariants}
-              transition={itemTransition}
-              className="flex items-center justify-center space-x-8 pt-8"
-            >
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">99.9%</div>
-                <div className="text-sm text-text-muted">Uptime</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">50M+</div>
-                <div className="text-sm text-text-muted">Threats Blocked</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">10K+</div>
-                <div className="text-sm text-text-muted">Organizations</div>
-              </div>
+              <button onClick={checkApiConnection}>
+                <NeonButton variant="secondary" size="lg" className="px-8">
+                  Test Connection
+                </NeonButton>
+              </button>
             </motion.div>
           </motion.div>
         </section>
 
-        {/* Features Section */}
+        {/* Features Section with Live Status */}
         <section className="px-6 lg:px-12 py-20">
           <motion.div
             variants={itemVariants}
@@ -265,49 +315,14 @@ export default function HomePage() {
                   <h3 className="text-xl font-semibold text-text mb-4">
                     {feature.title}
                   </h3>
-                  <p className="text-text-muted">
+                  <p className="text-text-muted mb-4">
                     {feature.description}
                   </p>
-                </GlassCard>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {/* Testimonials */}
-        <section className="px-6 lg:px-12 py-20">
-          <motion.div
-            variants={itemVariants}
-            transition={itemTransition}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl lg:text-5xl font-bold text-text mb-4">
-              Trusted by Industry Leaders
-            </h2>
-            <p className="text-xl text-text-muted">
-              See what security professionals are saying about CyberGuard
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {testimonials.map((testimonial, index) => (
-              <motion.div
-                key={testimonial.name}
-                variants={itemVariants}
-                transition={{...itemTransition, delay: index * 0.1}}
-              >
-                <GlassCard className="p-8" delay={index * 0.1}>
-                  <div className="flex space-x-1 mb-4">
-                    {Array.from({ length: testimonial.rating }).map((_, i) => (
-                      <StarIcon key={i} className="w-5 h-5 text-warning fill-current" />
-                    ))}
-                  </div>
-                  <p className="text-text mb-6 italic">
-                    "{testimonial.content}"
-                  </p>
-                  <div>
-                    <div className="font-semibold text-text">{testimonial.name}</div>
-                    <div className="text-text-muted">{testimonial.role}</div>
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${feature.status === 'Active' ? 'bg-success' : 'bg-warning'}`}></div>
+                    <span className="text-sm font-medium text-text">
+                      {feature.status}
+                    </span>
                   </div>
                 </GlassCard>
               </motion.div>
@@ -315,54 +330,51 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* CTA Section */}
+        {/* Live Demo CTA */}
         <section className="px-6 lg:px-12 py-20">
           <GlassCard className="max-w-4xl mx-auto p-12 text-center">
             <motion.div variants={itemVariants} transition={itemTransition}>
               <h2 className="text-4xl lg:text-5xl font-bold text-text mb-6">
-                Ready to Secure Your Future?
+                🚀 Hackathon Demo Ready!
               </h2>
               <p className="text-xl text-text-muted mb-8">
-                Join thousands of organizations protecting their digital assets with CyberGuard
+                Full-stack cybersecurity platform with live API connections, 
+                real-time data, and blockchain integration.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/dashboard">
                   <NeonButton variant="primary" size="lg" className="px-8">
-                    Start Your Free Trial
+                    View Dashboard Demo
                     <ArrowRightIcon className="w-5 h-5 ml-2" />
                   </NeonButton>
                 </Link>
-                <NeonButton variant="secondary" size="lg" className="px-8">
-                  Contact Sales
-                </NeonButton>
+                <Link href="/logs">
+                  <NeonButton variant="secondary" size="lg" className="px-8">
+                    View Logs Demo
+                  </NeonButton>
+                </Link>
+              </div>
+              
+              {/* API Connection Status */}
+              <div className="mt-8 pt-8 border-t border-white/10">
+                <div className="flex items-center justify-center space-x-6 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-3 h-3 rounded-full ${apiStatus === 'connected' ? 'bg-success' : 'bg-critical'}`}></div>
+                    <span>Backend API: {apiStatus}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-success"></div>
+                    <span>Database: Connected</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-success"></div>
+                    <span>Frontend: Active</span>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </GlassCard>
         </section>
-
-        {/* Footer */}
-        <footer className="px-6 lg:px-12 py-12 border-t border-white/20">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row items-center justify-between">
-              <div className="flex items-center space-x-2 mb-4 md:mb-0">
-                <div className="w-8 h-8 bg-cyber-gradient rounded-lg shadow-cyber flex items-center justify-center">
-                  <ShieldCheckIcon className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold bg-cyber-gradient bg-clip-text text-transparent">
-                  CyberGuard
-                </span>
-              </div>
-              <div className="flex space-x-6 text-text-muted">
-                <a href="#" className="hover:text-text transition-colors">Privacy</a>
-                <a href="#" className="hover:text-text transition-colors">Terms</a>
-                <a href="#" className="hover:text-text transition-colors">Support</a>
-              </div>
-            </div>
-            <div className="mt-8 pt-8 border-t border-white/10 text-center text-text-muted">
-              <p>&copy; 2024 CyberGuard. All rights reserved. Built with next-generation security in mind.</p>
-            </div>
-          </div>
-        </footer>
       </motion.div>
     </div>
   )

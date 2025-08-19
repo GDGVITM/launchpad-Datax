@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   EyeIcon, 
@@ -13,10 +14,14 @@ import {
 } from '@heroicons/react/24/outline'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { NeonButton } from '@/components/ui/NeonButton'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function LoginPage() {
+  const router = useRouter()
+  const { login, register, loading } = useAuth()
   const [isLogin, setIsLogin] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -24,13 +29,62 @@ export default function LoginPage() {
     name: ''
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Form submitted:', formData)
+    setError('')
+
+    try {
+      if (isLogin) {
+        // Login
+        if (!formData.email || !formData.password) {
+          setError('Please enter both email and password')
+          return
+        }
+
+        await login({ 
+          email: formData.email, 
+          password: formData.password 
+        })
+        
+        // Redirect to dashboard on successful login
+        router.push('/')
+      } else {
+        // Register
+        if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+          setError('Please fill in all fields')
+          return
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+          setError('Passwords do not match')
+          return
+        }
+
+        if (formData.password.length < 6) {
+          setError('Password must be at least 6 characters long')
+          return
+        }
+
+        await register({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          organizationId: 'demo-org' // Default for demo
+        })
+        
+        // Redirect to dashboard on successful registration
+        router.push('/')
+      }
+    } catch (err: any) {
+      console.error('Authentication error:', err)
+      setError(err.message || 'Authentication failed. Please try again.')
+    }
   }
 
   const handleWalletConnect = () => {
     console.log('Connecting wallet...')
+    // TODO: Implement wallet connection
+    setError('Wallet connection coming soon!')
   }
 
   const containerVariants = {
@@ -185,6 +239,17 @@ export default function LoginPage() {
                 onSubmit={handleSubmit}
                 className="space-y-6"
               >
+                {/* Error Message */}
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 bg-critical/10 border border-critical/20 rounded-xl text-critical text-sm"
+                  >
+                    {error}
+                  </motion.div>
+                )}
+
                 {!isLogin && (
                   <motion.div
                     variants={itemVariants}
@@ -197,6 +262,7 @@ export default function LoginPage() {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/50 transition-all duration-200 text-text placeholder-text-muted backdrop-blur-sm"
+                      required={!isLogin}
                     />
                   </motion.div>
                 )}
@@ -212,6 +278,7 @@ export default function LoginPage() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/50 transition-all duration-200 text-text placeholder-text-muted backdrop-blur-sm"
+                    required
                   />
                 </motion.div>
 
@@ -226,6 +293,8 @@ export default function LoginPage() {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     className="w-full pl-12 pr-12 py-3 bg-white/10 border border-white/20 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/50 transition-all duration-200 text-text placeholder-text-muted backdrop-blur-sm"
+                    required
+                    minLength={isLogin ? 1 : 6}
                   />
                   <button
                     type="button"
@@ -252,6 +321,8 @@ export default function LoginPage() {
                       value={formData.confirmPassword}
                       onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                       className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/50 transition-all duration-200 text-text placeholder-text-muted backdrop-blur-sm"
+                      required={!isLogin}
+                      minLength={6}
                     />
                   </motion.div>
                 )}
@@ -282,9 +353,19 @@ export default function LoginPage() {
                     type="submit"
                     variant="primary"
                     className="w-full justify-center py-3"
+                    disabled={loading}
                   >
-                    {isLogin ? 'Sign In' : 'Create Account'}
-                    <ArrowRightIcon className="w-5 h-5 ml-2" />
+                    {loading ? (
+                      <div className="flex items-center">
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                        {isLogin ? 'Signing In...' : 'Creating Account...'}
+                      </div>
+                    ) : (
+                      <>
+                        {isLogin ? 'Sign In' : 'Create Account'}
+                        <ArrowRightIcon className="w-5 h-5 ml-2" />
+                      </>
+                    )}
                   </NeonButton>
                 </motion.div>
               </motion.form>
